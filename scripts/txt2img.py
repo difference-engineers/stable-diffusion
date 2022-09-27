@@ -22,7 +22,6 @@ from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionS
 from transformers import AutoFeatureExtractor
 import uuid
 
-
 # load safety model
 safety_model_id = "CompVis/stable-diffusion-safety-checker"
 safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
@@ -250,7 +249,7 @@ def main():
             if opt.prompt in line:
                 outfolder = line[0:36]
     if len(outfolder) == 0:
-        outfolder = str(uuid.uuid4())
+        outfolder = str(opt.fprefix or uuid.uuid4()})
     promt_text = f"{outfolder} {args}"
     with open(prompts_file, "a") as f:
         f.write(promt_text)
@@ -343,12 +342,7 @@ def main():
                                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                                 img = Image.fromarray(x_sample.astype(np.uint8))
                                 img = put_watermark(img, wm_encoder)
-
-                                while os.path.exists(os.path.join(sample_path, f"{opt.fprefix or ''}{base_count:05}.png")):
-                                    base_count += 1
-
-                                img.save(os.path.join(sample_path, f"{opt.fprefix or ''}{base_count:05}.png"))
-                                base_count += 1
+                                img.save(os.path.join(sample_path, f"{uuid.uuid4()}.png"))
 
                         if not opt.skip_grid:
                             all_samples.append(x_checked_image_torch)
