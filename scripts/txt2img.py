@@ -1,4 +1,4 @@
-import argparse, os, sys, glob
+import argparse, os, sys
 import cv2
 import torch
 import numpy as np
@@ -12,7 +12,7 @@ from torchvision.utils import make_grid
 import time
 from pytorch_lightning import seed_everything
 from torch import autocast
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
@@ -344,10 +344,10 @@ def main():
                                 img = Image.fromarray(x_sample.astype(np.uint8))
                                 img = put_watermark(img, wm_encoder)
 
-                                while os.path.exists(os.path.join(sample_path, f"{base_count:05}.png")):
+                                while os.path.exists(os.path.join(sample_path, f"{opt.fprefix or ''}{base_count:05}.png")):
                                     base_count += 1
 
-                                img.save(os.path.join(sample_path, f"{base_count:05}.png"))
+                                img.save(os.path.join(sample_path, f"{opt.fprefix or ''}{base_count:05}.png"))
                                 base_count += 1
 
                         if not opt.skip_grid:

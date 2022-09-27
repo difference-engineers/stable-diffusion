@@ -1,6 +1,6 @@
 """make variations of input image"""
 
-import argparse, os, sys, glob
+import argparse, os
 import PIL
 import torch
 import numpy as np
@@ -191,6 +191,11 @@ def main():
         help="evaluate at this precision",
         choices=["full", "autocast"],
         default="autocast"
+    )
+    parser.add_argument(
+        "--fprefix",
+        type=str,
+        help="filename prefix for sample outputs"
     )
 
     opt = parser.parse_args()
