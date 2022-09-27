@@ -1,13 +1,13 @@
-import argparse, os, sys, glob
-import clip
+import argparse
+import os
+import glob
 import torch
-import torch.nn as nn
 import numpy as np
 from omegaconf import OmegaConf
 from PIL import Image
 from tqdm import tqdm, trange
 from itertools import islice
-from einops import rearrange, repeat
+from einops import rearrange
 from torchvision.utils import make_grid
 import scann
 import time
@@ -77,9 +77,15 @@ class Searcher(object):
                        searcher_savedir=None):
 
         print('Start training searcher')
-        searcher = scann.scann_ops_pybind.builder(self.database['embedding'] /
-                                                  np.linalg.norm(self.database['embedding'], axis=1)[:, np.newaxis],
-                                                  k, metric)
+        searcher = scann.scann_ops_pybind.builder(
+            self.database['embedding'] /
+            np.linalg.norm(
+                self.database['embedding'],
+                axis=1)[
+                :,
+                np.newaxis],
+            k,
+            metric)
         self.searcher = searcher.score_brute_force().build()
         print('Finish training searcher')
 
@@ -95,7 +101,9 @@ class Searcher(object):
 
     def load_multi_files(self, data_archive):
         out_data = {key: [] for key in self.database}
-        for d in tqdm(data_archive, desc=f'Loading datapool from {len(data_archive)} individual files.'):
+        for d in tqdm(
+                data_archive,
+                desc=f'Loading datapool from {len(data_archive)} individual files.'):
             for key in d.files:
                 out_data[key].append(d[key])
 
@@ -110,15 +118,18 @@ class Searcher(object):
             self.load_single_file(file_content[0])
         elif len(file_content) > 1:
             data = [np.load(f) for f in file_content]
-            prefetched_data = parallel_data_prefetch(self.load_multi_files, data,
-                                                     n_proc=min(len(data), cpu_count()), target_data_type='dict')
+            prefetched_data = parallel_data_prefetch(
+                self.load_multi_files, data, n_proc=min(
+                    len(data), cpu_count()), target_data_type='dict')
 
-            self.database = {key: np.concatenate([od[key] for od in prefetched_data], axis=1)[0] for key in
-                             self.database}
+            self.database = {key: np.concatenate([od[key] for od in prefetched_data], axis=1)[
+                0] for key in self.database}
         else:
-            raise ValueError(f'No npz-files in specified path "{self.database_path}" is this directory existing?')
+            raise ValueError(
+                f'No npz-files in specified path "{self.database_path}" is this directory existing?')
 
-        print(f'Finished loading of retrieval database of length {self.database["embedding"].shape[0]}.')
+        print(
+            f'Finished loading of retrieval database of length {self.database["embedding"].shape[0]}.')
 
     def load_retriever(self, version='ViT-L/14', ):
         model = FrozenClipImageEmbedder(model=version)
@@ -128,13 +139,16 @@ class Searcher(object):
         return model
 
     def load_searcher(self):
-        print(f'load searcher for database {self.database_name} from {self.searcher_savedir}')
-        self.searcher = scann.scann_ops_pybind.load_searcher(self.searcher_savedir)
+        print(
+            f'load searcher for database {self.database_name} from {self.searcher_savedir}')
+        self.searcher = scann.scann_ops_pybind.load_searcher(
+            self.searcher_savedir)
         print('Finished loading searcher.')
 
     def search(self, x, k):
         if self.searcher is None and self.database['embedding'].shape[0] < 2e4:
-            self.train_searcher(k)   # quickly fit searcher on the fly for small databases
+            # quickly fit searcher on the fly for small databases
+            self.train_searcher(k)
         assert self.searcher is not None, 'Cannot search with uninitialized searcher'
         if isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
@@ -143,14 +157,17 @@ class Searcher(object):
         query_embeddings = x / np.linalg.norm(x, axis=1)[:, np.newaxis]
 
         start = time.time()
-        nns, distances = self.searcher.search_batched(query_embeddings, final_num_neighbors=k)
+        nns, distances = self.searcher.search_batched(
+            query_embeddings, final_num_neighbors=k)
         end = time.time()
 
         out_embeddings = self.database['embedding'][nns]
         out_img_ids = self.database['img_id'][nns]
         out_pc = self.database['patch_coords'][nns]
 
-        out = {'nn_embeddings': out_embeddings / np.linalg.norm(out_embeddings, axis=-1)[..., np.newaxis],
+        out = {'nn_embeddings': out_embeddings / np.linalg.norm(out_embeddings,
+                                                                axis=-1)[...,
+                                                                         np.newaxis],
                'img_ids': out_img_ids,
                'patch_coords': out_pc,
                'queries': x,
@@ -167,7 +184,8 @@ class Searcher(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # TODO: add n_neighbors and modes (text-only, text-image-retrieval, image-image retrieval etc)
-    # TODO: add 'image variation' mode when knn=0 but a single image is given instead of a text prompt?
+    # TODO: add 'image variation' mode when knn=0 but a single image is given
+    # instead of a text prompt?
     parser.add_argument(
         "--prompt",
         type=str,
@@ -309,7 +327,8 @@ if __name__ == "__main__":
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}")
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device(
+        "cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
 
     clip_text_encoder = FrozenCLIPTextEmbedder(opt.clip_type).to(device)
@@ -358,12 +377,14 @@ if __name__ == "__main__":
                     uc = None
                     if searcher is not None:
                         nn_dict = searcher(c, opt.knn)
-                        c = torch.cat([c, torch.from_numpy(nn_dict['nn_embeddings']).cuda()], dim=1)
+                        c = torch.cat([c, torch.from_numpy(
+                            nn_dict['nn_embeddings']).cuda()], dim=1)
                     if opt.scale != 1.0:
                         uc = torch.zeros_like(c)
                     if isinstance(prompts, tuple):
                         prompts = list(prompts)
-                    shape = [16, opt.H // 16, opt.W // 16]  # note: currently hardcoded for f16 model
+                    # note: currently hardcoded for f16 model
+                    shape = [16, opt.H // 16, opt.W // 16]
                     samples_ddim, _ = sampler.sample(S=opt.ddim_steps,
                                                      conditioning=c,
                                                      batch_size=c.shape[0],
@@ -375,10 +396,12 @@ if __name__ == "__main__":
                                                      )
 
                     x_samples_ddim = model.decode_first_stage(samples_ddim)
-                    x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                    x_samples_ddim = torch.clamp(
+                        (x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
                     for x_sample in x_samples_ddim:
-                        x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                        x_sample = 255. * \
+                            rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                         Image.fromarray(x_sample.astype(np.uint8)).save(
                             os.path.join(sample_path, f"{base_count:05}.png"))
                         base_count += 1
@@ -391,8 +414,15 @@ if __name__ == "__main__":
                     grid = make_grid(grid, nrow=n_rows)
 
                     # to image
-                    grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                    Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
+                    grid = 255. * rearrange(grid,
+                                            'c h w -> h w c').cpu().numpy()
+                    Image.fromarray(
+                        grid.astype(
+                            np.uint8)).save(
+                        os.path.join(
+                            outpath,
+                            f'grid-{grid_count:04}.png'))
                     grid_count += 1
 
-    print(f"Your samples are ready and waiting for you here: \n{outpath} \nEnjoy.")
+    print(
+        f"Your samples are ready and waiting for you here: \n{outpath} \nEnjoy.")

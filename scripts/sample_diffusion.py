@@ -1,4 +1,9 @@
-import argparse, os, sys, glob, datetime, yaml
+import argparse
+import os
+import sys
+import glob
+import datetime
+import yaml
 import torch
 import time
 import numpy as np
@@ -10,7 +15,9 @@ from PIL import Image
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import instantiate_from_config
 
-rescale = lambda x: (x + 1.) / 2.
+
+def rescale(x): return (x + 1.) / 2.
+
 
 def custom_to_pil(x):
     x = x.detach().cpu()
@@ -25,7 +32,8 @@ def custom_to_pil(x):
 
 
 def custom_to_np(x):
-    # saves the batch in adm style as in https://github.com/openai/guided-diffusion/blob/main/scripts/image_sample.py
+    # saves the batch in adm style as in
+    # https://github.com/openai/guided-diffusion/blob/main/scripts/image_sample.py
     sample = x.detach().cpu()
     sample = ((sample + 1) * 127.5).clamp(0, 255).to(torch.uint8)
     sample = sample.permute(0, 2, 3, 1)
@@ -44,7 +52,7 @@ def logs2pil(logs, keys=["sample"]):
             else:
                 print(f"Unknown format for key {k}. ")
                 img = None
-        except:
+        except BaseException:
             img = None
         imgs[k] = img
     return imgs
@@ -55,10 +63,12 @@ def convsample(model, shape, return_intermediates=True,
                verbose=True,
                make_prog_row=False):
 
-
     if not make_prog_row:
-        return model.p_sample_loop(None, shape,
-                                   return_intermediates=return_intermediates, verbose=verbose)
+        return model.p_sample_loop(
+            None,
+            shape,
+            return_intermediates=return_intermediates,
+            verbose=verbose)
     else:
         return model.progressive_denoising(
             None, shape, verbose=True
@@ -71,13 +81,19 @@ def convsample_ddim(model, steps, shape, eta=1.0
     ddim = DDIMSampler(model)
     bs = shape[0]
     shape = shape[1:]
-    samples, intermediates = ddim.sample(steps, batch_size=bs, shape=shape, eta=eta, verbose=False,)
+    samples, intermediates = ddim.sample(
+        steps, batch_size=bs, shape=shape, eta=eta, verbose=False,)
     return samples, intermediates
 
 
 @torch.no_grad()
-def make_convolutional_sample(model, batch_size, vanilla=False, custom_steps=None, eta=1.0,):
-
+def make_convolutional_sample(
+    model,
+    batch_size,
+    vanilla=False,
+    custom_steps=None,
+    eta=1.0,
+):
 
     log = dict()
 
@@ -92,8 +108,8 @@ def make_convolutional_sample(model, batch_size, vanilla=False, custom_steps=Non
             sample, progrow = convsample(model, shape,
                                          make_prog_row=True)
         else:
-            sample, intermediates = convsample_ddim(model,  steps=custom_steps, shape=shape,
-                                                    eta=eta)
+            sample, intermediates = convsample_ddim(
+                model, steps=custom_steps, shape=shape, eta=eta)
 
         t1 = time.time()
 
@@ -105,24 +121,39 @@ def make_convolutional_sample(model, batch_size, vanilla=False, custom_steps=Non
     print(f'Throughput for this batch: {log["throughput"]}')
     return log
 
-def run(model, logdir, batch_size=50, vanilla=False, custom_steps=None, eta=None, n_samples=50000, nplog=None):
-    if vanilla:
-        print(f'Using Vanilla DDPM sampling with {model.num_timesteps} sampling steps.')
-    else:
-        print(f'Using DDIM sampling with {custom_steps} sampling steps and eta={eta}')
 
+def run(
+        model,
+        logdir,
+        batch_size=50,
+        vanilla=False,
+        custom_steps=None,
+        eta=None,
+        n_samples=50000,
+        nplog=None):
+    if vanilla:
+        print(
+            f'Using Vanilla DDPM sampling with {model.num_timesteps} sampling steps.')
+    else:
+        print(
+            f'Using DDIM sampling with {custom_steps} sampling steps and eta={eta}')
 
     tstart = time.time()
-    n_saved = len(glob.glob(os.path.join(logdir,'*.png')))-1
+    n_saved = len(glob.glob(os.path.join(logdir, '*.png'))) - 1
     # path = logdir
     if model.cond_stage_model is None:
         all_images = []
 
         print(f"Running unconditional sampling for {n_samples} samples")
-        for _ in trange(n_samples // batch_size, desc="Sampling Batches (unconditional)"):
-            logs = make_convolutional_sample(model, batch_size=batch_size,
-                                             vanilla=vanilla, custom_steps=custom_steps,
-                                             eta=eta)
+        for _ in trange(
+                n_samples // batch_size,
+                desc="Sampling Batches (unconditional)"):
+            logs = make_convolutional_sample(
+                model,
+                batch_size=batch_size,
+                vanilla=vanilla,
+                custom_steps=custom_steps,
+                eta=eta)
             n_saved = save_logs(logs, logdir, n_saved=n_saved, key="sample")
             all_images.extend([custom_to_np(logs["sample"])])
             if n_saved >= n_samples:
@@ -135,9 +166,11 @@ def run(model, logdir, batch_size=50, vanilla=False, custom_steps=None, eta=None
         np.savez(nppath, all_img)
 
     else:
-       raise NotImplementedError('Currently only sampling for unconditional models supported.')
+        raise NotImplementedError(
+            'Currently only sampling for unconditional models supported.')
 
-    print(f"sampling of {n_saved} images finished in {(time.time() - tstart) / 60.:.2f} minutes.")
+    print(
+        f"sampling of {n_saved} images finished in {(time.time() - tstart) / 60.:.2f} minutes.")
 
 
 def save_logs(logs, path, n_saved=0, key="sample", np_path=None):
@@ -153,7 +186,8 @@ def save_logs(logs, path, n_saved=0, key="sample", np_path=None):
             else:
                 npbatch = custom_to_np(batch)
                 shape_str = "x".join([str(x) for x in npbatch.shape])
-                nppath = os.path.join(np_path, f"{n_saved}-{shape_str}-samples.npz")
+                nppath = os.path.join(
+                    np_path, f"{n_saved}-{shape_str}-samples.npz")
                 np.savez(nppath, npbatch)
                 n_saved += npbatch.shape[0]
     return n_saved
@@ -219,7 +253,7 @@ def get_parser():
 
 def load_model_from_config(config, sd):
     model = instantiate_from_config(config)
-    model.load_state_dict(sd,strict=False)
+    model.load_state_dict(sd, strict=False)
     model.cuda()
     model.eval()
     return model
@@ -278,8 +312,10 @@ if __name__ == "__main__":
 
     if opt.logdir != "none":
         locallog = logdir.split(os.sep)[-1]
-        if locallog == "": locallog = logdir.split(os.sep)[-2]
-        print(f"Switching logdir from '{logdir}' to '{os.path.join(opt.logdir, locallog)}'")
+        if locallog == "":
+            locallog = logdir.split(os.sep)[-2]
+        print(
+            f"Switching logdir from '{logdir}' to '{os.path.join(opt.logdir, locallog)}'")
         logdir = os.path.join(opt.logdir, locallog)
 
     print(config)
@@ -305,9 +341,13 @@ if __name__ == "__main__":
         yaml.dump(sampling_conf, f, default_flow_style=False)
     print(sampling_conf)
 
-
-    run(model, imglogdir, eta=opt.eta,
-        vanilla=opt.vanilla_sample,  n_samples=opt.n_samples, custom_steps=opt.custom_steps,
-        batch_size=opt.batch_size, nplog=numpylogdir)
+    run(model,
+        imglogdir,
+        eta=opt.eta,
+        vanilla=opt.vanilla_sample,
+        n_samples=opt.n_samples,
+        custom_steps=opt.custom_steps,
+        batch_size=opt.batch_size,
+        nplog=numpylogdir)
 
     print("done.")

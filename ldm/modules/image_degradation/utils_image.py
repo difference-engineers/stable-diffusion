@@ -6,10 +6,11 @@ import torch
 import cv2
 from torchvision.utils import make_grid
 from datetime import datetime
-#import matplotlib.pyplot as plt   # TODO: check with Dominik, also bsrgan.py vs bsrgan_light.py
+# TODO: check with Dominik, also bsrgan.py vs bsrgan_light.py
+import matplotlib.pyplot as plt
 
 
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
 '''
@@ -23,7 +24,18 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 '''
 
 
-IMG_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', '.tif']
+IMG_EXTENSIONS = [
+    '.jpg',
+    '.JPG',
+    '.jpeg',
+    '.JPEG',
+    '.png',
+    '.PNG',
+    '.ppm',
+    '.PPM',
+    '.bmp',
+    '.BMP',
+    '.tif']
 
 
 def is_image_file(filename):
@@ -49,11 +61,11 @@ def surf(Z, cmap='rainbow', figsize=None):
     ax3 = plt.axes(projection='3d')
 
     w, h = Z.shape[:2]
-    xx = np.arange(0,w,1)
-    yy = np.arange(0,h,1)
+    xx = np.arange(0, w, 1)
+    yy = np.arange(0, h, 1)
     X, Y = np.meshgrid(xx, yy)
-    ax3.plot_surface(X,Y,Z,cmap=cmap)
-    #ax3.contour(X,Y,Z, zdim='z',offset=-2，cmap=cmap)
+    ax3.plot_surface(X, Y, Z, cmap=cmap)
+    # ax3.contour(X,Y,Z, zdim='z',offset=-2，cmap=cmap)
     plt.show()
 
 
@@ -85,7 +97,7 @@ def _get_paths_from_images(path):
 
 '''
 # --------------------------------------------
-# split large images into small images 
+# split large images into small images
 # --------------------------------------------
 '''
 
@@ -94,15 +106,15 @@ def patches_from_image(img, p_size=512, p_overlap=64, p_max=800):
     w, h = img.shape[:2]
     patches = []
     if w > p_max and h > p_max:
-        w1 = list(np.arange(0, w-p_size, p_size-p_overlap, dtype=np.int))
-        h1 = list(np.arange(0, h-p_size, p_size-p_overlap, dtype=np.int))
-        w1.append(w-p_size)
-        h1.append(h-p_size)
+        w1 = list(np.arange(0, w - p_size, p_size - p_overlap, dtype=np.int))
+        h1 = list(np.arange(0, h - p_size, p_size - p_overlap, dtype=np.int))
+        w1.append(w - p_size)
+        h1.append(h - p_size)
 #        print(w1)
 #        print(h1)
         for i in w1:
             for j in h1:
-                patches.append(img[i:i+p_size, j:j+p_size,:])
+                patches.append(img[i:i + p_size, j:j + p_size, :])
     else:
         patches.append(img)
 
@@ -118,11 +130,18 @@ def imssave(imgs, img_path):
     for i, img in enumerate(imgs):
         if img.ndim == 3:
             img = img[:, :, [2, 1, 0]]
-        new_path = os.path.join(os.path.dirname(img_path), img_name+str('_s{:04d}'.format(i))+'.png')
+        new_path = os.path.join(os.path.dirname(img_path),
+                                img_name + str('_s{:04d}'.format(i)) + '.png')
         cv2.imwrite(new_path, img)
 
 
-def split_imageset(original_dataroot, taget_dataroot, n_channels=3, p_size=800, p_overlap=96, p_max=1000):
+def split_imageset(
+        original_dataroot,
+        taget_dataroot,
+        n_channels=3,
+        p_size=800,
+        p_overlap=96,
+        p_max=1000):
     """
     split the large images from original_dataroot into small overlapped images with size (p_size)x(p_size),
     and save them into taget_dataroot; only the images with larger size than (p_max)x(p_max)
@@ -139,9 +158,14 @@ def split_imageset(original_dataroot, taget_dataroot, n_channels=3, p_size=800, 
         # img_name, ext = os.path.splitext(os.path.basename(img_path))
         img = imread_uint(img_path, n_channels=n_channels)
         patches = patches_from_image(img, p_size, p_overlap, p_max)
-        imssave(patches, os.path.join(taget_dataroot,os.path.basename(img_path)))
-        #if original_dataroot == taget_dataroot:
-        #del img_path
+        imssave(
+            patches,
+            os.path.join(
+                taget_dataroot,
+                os.path.basename(img_path)))
+        # if original_dataroot == taget_dataroot:
+        # del img_path
+
 
 '''
 # --------------------------------------------
@@ -206,12 +230,12 @@ def imsave(img, img_path):
         img = img[:, :, [2, 1, 0]]
     cv2.imwrite(img_path, img)
 
+
 def imwrite(img, img_path):
     img = np.squeeze(img)
     if img.ndim == 3:
         img = img[:, :, [2, 1, 0]]
     cv2.imwrite(img_path, img)
-
 
 
 # --------------------------------------------
@@ -248,22 +272,22 @@ def read_img(path):
 
 def uint2single(img):
 
-    return np.float32(img/255.)
+    return np.float32(img / 255.)
 
 
 def single2uint(img):
 
-    return np.uint8((img.clip(0, 1)*255.).round())
+    return np.uint8((img.clip(0, 1) * 255.).round())
 
 
 def uint162single(img):
 
-    return np.float32(img/65535.)
+    return np.float32(img / 65535.)
 
 
 def single2uint16(img):
 
-    return np.uint16((img.clip(0, 1)*65535.).round())
+    return np.uint16((img.clip(0, 1) * 65535.).round())
 
 
 # --------------------------------------------
@@ -275,14 +299,18 @@ def single2uint16(img):
 def uint2tensor4(img):
     if img.ndim == 2:
         img = np.expand_dims(img, axis=2)
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1).float().div(255.).unsqueeze(0)
+    return torch.from_numpy(
+        np.ascontiguousarray(img)).permute(
+        2, 0, 1).float().div(255.).unsqueeze(0)
 
 
 # convert uint to 3-dimensional torch tensor
 def uint2tensor3(img):
     if img.ndim == 2:
         img = np.expand_dims(img, axis=2)
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1).float().div(255.)
+    return torch.from_numpy(
+        np.ascontiguousarray(img)).permute(
+        2, 0, 1).float().div(255.)
 
 
 # convert 2/3/4-dimensional torch tensor to uint
@@ -290,7 +318,7 @@ def tensor2uint(img):
     img = img.data.squeeze().float().clamp_(0, 1).cpu().numpy()
     if img.ndim == 3:
         img = np.transpose(img, (1, 2, 0))
-    return np.uint8((img*255.0).round())
+    return np.uint8((img * 255.0).round())
 
 
 # --------------------------------------------
@@ -305,7 +333,9 @@ def single2tensor3(img):
 
 # convert single (HxWxC) to 4-dimensional torch tensor
 def single2tensor4(img):
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1).float().unsqueeze(0)
+    return torch.from_numpy(
+        np.ascontiguousarray(img)).permute(
+        2, 0, 1).float().unsqueeze(0)
 
 
 # convert torch tensor to single
@@ -317,6 +347,8 @@ def tensor2single(img):
     return img
 
 # convert torch tensor to single
+
+
 def tensor2single3(img):
     img = img.data.squeeze().float().cpu().numpy()
     if img.ndim == 3:
@@ -327,15 +359,20 @@ def tensor2single3(img):
 
 
 def single2tensor5(img):
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1, 3).float().unsqueeze(0)
+    return torch.from_numpy(
+        np.ascontiguousarray(img)).permute(
+        2, 0, 1, 3).float().unsqueeze(0)
 
 
 def single32tensor5(img):
-    return torch.from_numpy(np.ascontiguousarray(img)).float().unsqueeze(0).unsqueeze(0)
+    return torch.from_numpy(np.ascontiguousarray(
+        img)).float().unsqueeze(0).unsqueeze(0)
 
 
 def single42tensor4(img):
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1, 3).float()
+    return torch.from_numpy(
+        np.ascontiguousarray(img)).permute(
+        2, 0, 1, 3).float()
 
 
 # from skimage.io import imread, imsave
@@ -345,12 +382,18 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(0, 1)):
     Input: 4D(B,(3/1),H,W), 3D(C,H,W), or 2D(H,W), any range, RGB channel order
     Output: 3D(H,W,C) or 2D(H,W), [0,255], np.uint8 (default)
     '''
-    tensor = tensor.squeeze().float().cpu().clamp_(*min_max)  # squeeze first, then clamp
-    tensor = (tensor - min_max[0]) / (min_max[1] - min_max[0])  # to range [0,1]
+    tensor = tensor.squeeze().float().cpu().clamp_(
+        *min_max)  # squeeze first, then clamp
+    tensor = (tensor - min_max[0]) / \
+        (min_max[1] - min_max[0])  # to range [0,1]
     n_dim = tensor.dim()
     if n_dim == 4:
         n_img = len(tensor)
-        img_np = make_grid(tensor, nrow=int(math.sqrt(n_img)), normalize=False).numpy()
+        img_np = make_grid(
+            tensor,
+            nrow=int(
+                math.sqrt(n_img)),
+            normalize=False).numpy()
         img_np = np.transpose(img_np[[2, 1, 0], :, :], (1, 2, 0))  # HWC, BGR
     elif n_dim == 3:
         img_np = tensor.numpy()
@@ -511,7 +554,7 @@ def shave(img_in, border=0):
     # img_in: Numpy, HWC or HW
     img = np.copy(img_in)
     h, w = img.shape[:2]
-    img = img[border:h-border, border:w-border]
+    img = img[border:h - border, border:w - border]
     return img
 
 
@@ -541,8 +584,8 @@ def rgb2ycbcr(img, only_y=True):
     if only_y:
         rlt = np.dot(img, [65.481, 128.553, 24.966]) / 255.0 + 16.0
     else:
-        rlt = np.matmul(img, [[65.481, -37.797, 112.0], [128.553, -74.203, -93.786],
-                              [24.966, 112.0, -18.214]]) / 255.0 + [16, 128, 128]
+        rlt = np.matmul(img, [[65.481, -37.797, 112.0], [128.553, -74.203, -
+                        93.786], [24.966, 112.0, -18.214]]) / 255.0 + [16, 128, 128]
     if in_img_type == np.uint8:
         rlt = rlt.round()
     else:
@@ -585,8 +628,8 @@ def bgr2ycbcr(img, only_y=True):
     if only_y:
         rlt = np.dot(img, [24.966, 128.553, 65.481]) / 255.0 + 16.0
     else:
-        rlt = np.matmul(img, [[24.966, 112.0, -18.214], [128.553, -74.203, -93.786],
-                              [65.481, -37.797, 112.0]]) / 255.0 + [16, 128, 128]
+        rlt = np.matmul(img, [[24.966, 112.0, -18.214], [128.553, -74.203, -
+                        93.786], [65.481, -37.797, 112.0]]) / 255.0 + [16, 128, 128]
     if in_img_type == np.uint8:
         rlt = rlt.round()
     else:
@@ -620,13 +663,13 @@ def channel_convert(in_c, tar_type, img_list):
 # --------------------------------------------
 def calculate_psnr(img1, img2, border=0):
     # img1 and img2 have range [0, 255]
-    #img1 = img1.squeeze()
-    #img2 = img2.squeeze()
+    # img1 = img1.squeeze()
+    # img2 = img2.squeeze()
     if not img1.shape == img2.shape:
         raise ValueError('Input images must have the same dimensions.')
     h, w = img1.shape[:2]
-    img1 = img1[border:h-border, border:w-border]
-    img2 = img2[border:h-border, border:w-border]
+    img1 = img1[border:h - border, border:w - border]
+    img2 = img2[border:h - border, border:w - border]
 
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
@@ -644,13 +687,13 @@ def calculate_ssim(img1, img2, border=0):
     the same outputs as MATLAB's
     img1, img2: [0, 255]
     '''
-    #img1 = img1.squeeze()
-    #img2 = img2.squeeze()
+    # img1 = img1.squeeze()
+    # img2 = img2.squeeze()
     if not img1.shape == img2.shape:
         raise ValueError('Input images must have the same dimensions.')
     h, w = img1.shape[:2]
-    img1 = img1[border:h-border, border:w-border]
-    img2 = img2[border:h-border, border:w-border]
+    img1 = img1[border:h - border, border:w - border]
+    img2 = img2[border:h - border, border:w - border]
 
     if img1.ndim == 2:
         return ssim(img1, img2)
@@ -658,7 +701,7 @@ def calculate_ssim(img1, img2, border=0):
         if img1.shape[2] == 3:
             ssims = []
             for i in range(3):
-                ssims.append(ssim(img1[:,:,i], img2[:,:,i]))
+                ssims.append(ssim(img1[:, :, i], img2[:, :, i]))
             return np.array(ssims).mean()
         elif img1.shape[2] == 1:
             return ssim(np.squeeze(img1), np.squeeze(img2))
@@ -684,8 +727,8 @@ def ssim(img1, img2):
     sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
     sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
 
-    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
-                                                            (sigma1_sq + sigma2_sq + C2))
+    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / \
+        ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean()
 
 
@@ -701,13 +744,20 @@ def cubic(x):
     absx = torch.abs(x)
     absx2 = absx**2
     absx3 = absx**3
-    return (1.5*absx3 - 2.5*absx2 + 1) * ((absx <= 1).type_as(absx)) + \
-        (-0.5*absx3 + 2.5*absx2 - 4*absx + 2) * (((absx > 1)*(absx <= 2)).type_as(absx))
+    return (1.5 * absx3 - 2.5 * absx2 + 1) * ((absx <= 1).type_as(absx)) + (-0.5 * \
+            absx3 + 2.5 * absx2 - 4 * absx + 2) * (((absx > 1) * (absx <= 2)).type_as(absx))
 
 
-def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width, antialiasing):
+def calculate_weights_indices(
+        in_length,
+        out_length,
+        scale,
+        kernel,
+        kernel_width,
+        antialiasing):
     if (scale < 1) and (antialiasing):
-        # Use a modified kernel to simultaneously interpolate and antialias- larger kernel width
+        # Use a modified kernel to simultaneously interpolate and antialias-
+        # larger kernel width
         kernel_width = kernel_width / scale
 
     # Output-space coordinates
@@ -729,8 +779,8 @@ def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width
 
     # The indices of the input pixels involved in computing the k-th output
     # pixel are in row k of the indices matrix.
-    indices = left.view(out_length, 1).expand(out_length, P) + torch.linspace(0, P - 1, P).view(
-        1, P).expand(out_length, P)
+    indices = left.view(out_length, 1).expand(
+        out_length, P) + torch.linspace(0, P - 1, P).view(1, P).expand(out_length, P)
 
     # The weights used to compute the k-th output pixel are in row k of the
     # weights matrix.
@@ -744,7 +794,8 @@ def calculate_weights_indices(in_length, out_length, scale, kernel, kernel_width
     weights_sum = torch.sum(weights, 1).view(out_length, 1)
     weights = weights / weights_sum.expand(out_length, P)
 
-    # If a column in weights is all zero, get rid of it. only consider the first and last column.
+    # If a column in weights is all zero, get rid of it. only consider the
+    # first and last column.
     weights_zero_tmp = torch.sum((weights == 0), 0)
     if not math.isclose(weights_zero_tmp[0], 0, rel_tol=1e-6):
         indices = indices.narrow(1, 1, P - 2)
@@ -771,7 +822,8 @@ def imresize(img, scale, antialiasing=True):
     if need_squeeze:
         img.unsqueeze_(0)
     in_C, in_H, in_W = img.size()
-    out_C, out_H, out_W = in_C, math.ceil(in_H * scale), math.ceil(in_W * scale)
+    out_C, out_H, out_W = in_C, math.ceil(
+        in_H * scale), math.ceil(in_W * scale)
     kernel_width = 4
     kernel = 'cubic'
 
@@ -805,7 +857,8 @@ def imresize(img, scale, antialiasing=True):
     for i in range(out_H):
         idx = int(indices_H[i][0])
         for j in range(out_C):
-            out_1[j, i, :] = img_aug[j, idx:idx + kernel_width, :].transpose(0, 1).mv(weights_H[i])
+            out_1[j, i, :] = img_aug[j, idx:idx +
+                                     kernel_width, :].transpose(0, 1).mv(weights_H[i])
 
     # process W dimension
     # symmetric copying
@@ -827,7 +880,8 @@ def imresize(img, scale, antialiasing=True):
     for i in range(out_W):
         idx = int(indices_W[i][0])
         for j in range(out_C):
-            out_2[j, :, i] = out_1_aug[j, :, idx:idx + kernel_width].mv(weights_W[i])
+            out_2[j, :, i] = out_1_aug[j, :, idx:idx +
+                                       kernel_width].mv(weights_W[i])
     if need_squeeze:
         out_2.squeeze_()
     return out_2
@@ -846,7 +900,8 @@ def imresize_np(img, scale, antialiasing=True):
         img.unsqueeze_(2)
 
     in_H, in_W, in_C = img.size()
-    out_C, out_H, out_W = in_C, math.ceil(in_H * scale), math.ceil(in_W * scale)
+    out_C, out_H, out_W = in_C, math.ceil(
+        in_H * scale), math.ceil(in_W * scale)
     kernel_width = 4
     kernel = 'cubic'
 
@@ -880,7 +935,8 @@ def imresize_np(img, scale, antialiasing=True):
     for i in range(out_H):
         idx = int(indices_H[i][0])
         for j in range(out_C):
-            out_1[i, :, j] = img_aug[idx:idx + kernel_width, :, j].transpose(0, 1).mv(weights_H[i])
+            out_1[i, :, j] = img_aug[idx:idx + kernel_width,
+                                     :, j].transpose(0, 1).mv(weights_H[i])
 
     # process W dimension
     # symmetric copying
@@ -902,7 +958,8 @@ def imresize_np(img, scale, antialiasing=True):
     for i in range(out_W):
         idx = int(indices_W[i][0])
         for j in range(out_C):
-            out_2[:, i, j] = out_1_aug[:, idx:idx + kernel_width, j].mv(weights_W[i])
+            out_2[:, i, j] = out_1_aug[:, idx:idx +
+                                       kernel_width, j].mv(weights_W[i])
     if need_squeeze:
         out_2.squeeze_()
 

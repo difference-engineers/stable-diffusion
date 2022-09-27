@@ -47,11 +47,12 @@ class LSUNBase(Dataset):
         crop = min(img.shape[0], img.shape[1])
         h, w, = img.shape[0], img.shape[1]
         img = img[(h - crop) // 2:(h + crop) // 2,
-              (w - crop) // 2:(w + crop) // 2]
+                  (w - crop) // 2:(w + crop) // 2]
 
         image = Image.fromarray(img)
         if self.size is not None:
-            image = image.resize((self.size, self.size), resample=self.interpolation)
+            image = image.resize(
+                (self.size, self.size), resample=self.interpolation)
 
         image = self.flip(image)
         image = np.array(image).astype(np.uint8)
@@ -61,32 +62,47 @@ class LSUNBase(Dataset):
 
 class LSUNChurchesTrain(LSUNBase):
     def __init__(self, **kwargs):
-        super().__init__(txt_file="data/lsun/church_outdoor_train.txt", data_root="data/lsun/churches", **kwargs)
+        super().__init__(
+            txt_file="data/lsun/church_outdoor_train.txt",
+            data_root="data/lsun/churches",
+            **kwargs)
 
 
 class LSUNChurchesValidation(LSUNBase):
     def __init__(self, flip_p=0., **kwargs):
-        super().__init__(txt_file="data/lsun/church_outdoor_val.txt", data_root="data/lsun/churches",
-                         flip_p=flip_p, **kwargs)
+        super().__init__(txt_file="data/lsun/church_outdoor_val.txt",
+                         data_root="data/lsun/churches", flip_p=flip_p, **kwargs)
 
 
 class LSUNBedroomsTrain(LSUNBase):
     def __init__(self, **kwargs):
-        super().__init__(txt_file="data/lsun/bedrooms_train.txt", data_root="data/lsun/bedrooms", **kwargs)
+        super().__init__(
+            txt_file="data/lsun/bedrooms_train.txt",
+            data_root="data/lsun/bedrooms",
+            **kwargs)
 
 
 class LSUNBedroomsValidation(LSUNBase):
     def __init__(self, flip_p=0.0, **kwargs):
-        super().__init__(txt_file="data/lsun/bedrooms_val.txt", data_root="data/lsun/bedrooms",
-                         flip_p=flip_p, **kwargs)
+        super().__init__(
+            txt_file="data/lsun/bedrooms_val.txt",
+            data_root="data/lsun/bedrooms",
+            flip_p=flip_p,
+            **kwargs)
 
 
 class LSUNCatsTrain(LSUNBase):
     def __init__(self, **kwargs):
-        super().__init__(txt_file="data/lsun/cat_train.txt", data_root="data/lsun/cats", **kwargs)
+        super().__init__(
+            txt_file="data/lsun/cat_train.txt",
+            data_root="data/lsun/cats",
+            **kwargs)
 
 
 class LSUNCatsValidation(LSUNBase):
     def __init__(self, flip_p=0., **kwargs):
-        super().__init__(txt_file="data/lsun/cat_val.txt", data_root="data/lsun/cats",
-                         flip_p=flip_p, **kwargs)
+        super().__init__(
+            txt_file="data/lsun/cat_val.txt",
+            data_root="data/lsun/cats",
+            flip_p=flip_p,
+            **kwargs)

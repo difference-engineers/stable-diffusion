@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from functools import partial
 from inspect import isfunction
 from collections import namedtuple
-from einops import rearrange, repeat, reduce
+from einops import rearrange, repeat
 
 # constants
 
@@ -43,7 +43,10 @@ class FixedPositionalEmbedding(nn.Module):
         self.register_buffer('inv_freq', inv_freq)
 
     def forward(self, x, seq_dim=1, offset=0):
-        t = torch.arange(x.shape[seq_dim], device=x.device).type_as(self.inv_freq) + offset
+        t = torch.arange(
+            x.shape[seq_dim],
+            device=x.device).type_as(
+            self.inv_freq) + offset
         sinusoid_inp = torch.einsum('i , j -> i j', t, self.inv_freq)
         emb = torch.cat((sinusoid_inp.sin(), sinusoid_inp.cos()), dim=-1)
         return emb[None, :, :]
@@ -108,8 +111,10 @@ def group_by_key_prefix(prefix, d):
 
 
 def groupby_prefix_and_trim(prefix, d):
-    kwargs_with_prefix, kwargs = group_dict_by_key(partial(string_begins_with, prefix), d)
-    kwargs_without_prefix = dict(map(lambda x: (x[0][len(prefix):], x[1]), tuple(kwargs_with_prefix.items())))
+    kwargs_with_prefix, kwargs = group_dict_by_key(
+        partial(string_begins_with, prefix), d)
+    kwargs_without_prefix = dict(
+        map(lambda x: (x[0][len(prefix):], x[1]), tuple(kwargs_with_prefix.items())))
     return kwargs_without_prefix, kwargs
 
 
@@ -229,7 +234,8 @@ class Attention(nn.Module):
     ):
         super().__init__()
         if use_entmax15:
-            raise NotImplementedError("Check out entmax activation instead of softmax activation!")
+            raise NotImplementedError(
+                "Check out entmax activation instead of softmax activation!")
         self.scale = dim_head ** -0.5
         self.heads = heads
         self.causal = causal
@@ -263,7 +269,13 @@ class Attention(nn.Module):
 
         # attention on attention
         self.attn_on_attn = on_attn
-        self.to_out = nn.Sequential(nn.Linear(inner_dim, dim * 2), nn.GLU()) if on_attn else nn.Linear(inner_dim, dim)
+        self.to_out = nn.Sequential(
+            nn.Linear(
+                inner_dim,
+                dim * 2),
+            nn.GLU()) if on_attn else nn.Linear(
+            inner_dim,
+            dim)
 
     def forward(
             self,
@@ -276,7 +288,8 @@ class Attention(nn.Module):
             prev_attn=None,
             mem=None
     ):
-        b, n, _, h, talking_heads, device = *x.shape, self.heads, self.talking_heads, x.device
+        b, n, _, h, talking_heads, device = * \
+            x.shape, self.heads, self.talking_heads, x.device
         kv_input = default(context, x)
 
         q_input = x
@@ -288,7 +301,8 @@ class Attention(nn.Module):
             v_input = torch.cat((mem, v_input), dim=-2)
 
         if exists(sinusoidal_emb):
-            # in shortformer, the query would start at a position offset depending on the past cached memory
+            # in shortformer, the query would start at a position offset
+            # depending on the past cached memory
             offset = k_input.shape[-2] - q_input.shape[-2]
             q_input = q_input + sinusoidal_emb(q_input, offset=offset)
             k_input = k_input + sinusoidal_emb(k_input)
@@ -297,23 +311,31 @@ class Attention(nn.Module):
         k = self.to_k(k_input)
         v = self.to_v(v_input)
 
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=h), (q, k, v))
+        q, k, v = map(
+            lambda t: rearrange(
+                t, 'b n (h d) -> b h n d', h=h), (q, k, v))
 
         input_mask = None
         if any(map(exists, (mask, context_mask))):
-            q_mask = default(mask, lambda: torch.ones((b, n), device=device).bool())
+            q_mask = default(
+                mask, lambda: torch.ones(
+                    (b, n), device=device).bool())
             k_mask = q_mask if not exists(context) else context_mask
-            k_mask = default(k_mask, lambda: torch.ones((b, k.shape[-2]), device=device).bool())
+            k_mask = default(k_mask, lambda: torch.ones(
+                (b, k.shape[-2]), device=device).bool())
             q_mask = rearrange(q_mask, 'b i -> b () i ()')
             k_mask = rearrange(k_mask, 'b j -> b () () j')
             input_mask = q_mask * k_mask
 
         if self.num_mem_kv > 0:
-            mem_k, mem_v = map(lambda t: repeat(t, 'h n d -> b h n d', b=b), (self.mem_k, self.mem_v))
+            mem_k, mem_v = map(
+                lambda t: repeat(
+                    t, 'h n d -> b h n d', b=b), (self.mem_k, self.mem_v))
             k = torch.cat((mem_k, k), dim=-2)
             v = torch.cat((mem_v, v), dim=-2)
             if exists(input_mask):
-                input_mask = F.pad(input_mask, (self.num_mem_kv, 0), value=True)
+                input_mask = F.pad(
+                    input_mask, (self.num_mem_kv, 0), value=True)
 
         dots = einsum('b h i d, b h j d -> b h i j', q, k) * self.scale
         mask_value = max_neg_value(dots)
@@ -324,7 +346,8 @@ class Attention(nn.Module):
         pre_softmax_attn = dots
 
         if talking_heads:
-            dots = einsum('b h i j, h k -> b k i j', dots, self.pre_softmax_proj).contiguous()
+            dots = einsum('b h i j, h k -> b k i j', dots,
+                          self.pre_softmax_proj).contiguous()
 
         if exists(rel_pos):
             dots = rel_pos(dots)
@@ -336,7 +359,9 @@ class Attention(nn.Module):
         if self.causal:
             i, j = dots.shape[-2:]
             r = torch.arange(i, device=device)
-            mask = rearrange(r, 'i -> () () i ()') < rearrange(r, 'j -> () () () j')
+            mask = rearrange(r,
+                             'i -> () () i ()') < rearrange(r,
+                                                            'j -> () () () j')
             mask = F.pad(mask, (j - i, 0), value=False)
             dots.masked_fill_(mask, mask_value)
             del mask
@@ -354,7 +379,8 @@ class Attention(nn.Module):
         attn = self.dropout(attn)
 
         if talking_heads:
-            attn = einsum('b h i j, h k -> b k i j', attn, self.post_softmax_proj).contiguous()
+            attn = einsum('b h i j, h k -> b k i j', attn,
+                          self.post_softmax_proj).contiguous()
 
         out = einsum('b h i j, b h j d -> b h i d', attn, v)
         out = rearrange(out, 'b h n d -> b n (h d)')
@@ -403,7 +429,8 @@ class AttentionLayers(nn.Module):
         self.layers = nn.ModuleList([])
 
         self.has_pos_emb = position_infused_attn
-        self.pia_pos_emb = FixedPositionalEmbedding(dim) if position_infused_attn else None
+        self.pia_pos_emb = FixedPositionalEmbedding(
+            dim) if position_infused_attn else None
         self.rotary_pos_emb = always(None)
 
         assert rel_pos_num_buckets <= rel_pos_max_distance, 'number of relative position buckets must be less than the relative position max distance'
@@ -438,15 +465,19 @@ class AttentionLayers(nn.Module):
             assert 1 < par_ratio <= par_depth, 'par ratio out of range'
             default_block = tuple(filter(not_equals('f'), default_block))
             par_attn = par_depth // par_ratio
-            depth_cut = par_depth * 2 // 3  # 2 / 3 attention layer cutoff suggested by PAR paper
+            # 2 / 3 attention layer cutoff suggested by PAR paper
+            depth_cut = par_depth * 2 // 3
             par_width = (depth_cut + depth_cut // par_attn) // par_attn
-            assert len(default_block) <= par_width, 'default block is too large for par_ratio'
-            par_block = default_block + ('f',) * (par_width - len(default_block))
+            assert len(
+                default_block) <= par_width, 'default block is too large for par_ratio'
+            par_block = default_block + \
+                ('f',) * (par_width - len(default_block))
             par_head = par_block * par_attn
             layer_types = par_head + ('f',) * (par_depth - len(par_head))
         elif exists(sandwich_coef):
             assert sandwich_coef > 0 and sandwich_coef <= depth, 'sandwich coefficient should be less than the depth'
-            layer_types = ('a',) * sandwich_coef + default_block * (depth - sandwich_coef) + ('f',) * sandwich_coef
+            layer_types = ('a',) * sandwich_coef + default_block * \
+                (depth - sandwich_coef) + ('f',) * sandwich_coef
         else:
             layer_types = default_block * depth
 
@@ -455,7 +486,8 @@ class AttentionLayers(nn.Module):
 
         for layer_type in self.layer_types:
             if layer_type == 'a':
-                layer = Attention(dim, heads=heads, causal=causal, **attn_kwargs)
+                layer = Attention(
+                    dim, heads=heads, causal=causal, **attn_kwargs)
             elif layer_type == 'c':
                 layer = Attention(dim, heads=heads, **attn_kwargs)
             elif layer_type == 'f':
@@ -494,7 +526,8 @@ class AttentionLayers(nn.Module):
 
         mems = mems.copy() if exists(mems) else [None] * self.num_attn_layers
 
-        for ind, (layer_type, (norm, block, residual_fn)) in enumerate(zip(self.layer_types, self.layers)):
+        for ind, (layer_type, (norm, block, residual_fn)) in enumerate(
+                zip(self.layer_types, self.layers)):
             is_last = ind == (len(self.layers) - 1)
 
             if layer_type == 'a':
@@ -507,10 +540,11 @@ class AttentionLayers(nn.Module):
                 x = norm(x)
 
             if layer_type == 'a':
-                out, inter = block(x, mask=mask, sinusoidal_emb=self.pia_pos_emb, rel_pos=self.rel_pos,
-                                   prev_attn=prev_attn, mem=layer_mem)
+                out, inter = block(x, mask=mask, sinusoidal_emb=self.pia_pos_emb,
+                                   rel_pos=self.rel_pos, prev_attn=prev_attn, mem=layer_mem)
             elif layer_type == 'c':
-                out, inter = block(x, context=context, mask=mask, context_mask=context_mask, prev_attn=prev_cross_attn)
+                out, inter = block(
+                    x, context=context, mask=mask, context_mask=context_mask, prev_attn=prev_cross_attn)
             elif layer_type == 'f':
                 out = block(x)
 
@@ -544,7 +578,6 @@ class Encoder(AttentionLayers):
         super().__init__(causal=False, **kwargs)
 
 
-
 class TransformerWrapper(nn.Module):
     def __init__(
             self,
@@ -560,7 +593,8 @@ class TransformerWrapper(nn.Module):
             use_pos_emb=True
     ):
         super().__init__()
-        assert isinstance(attn_layers, AttentionLayers), 'attention layers must be one of Encoder or Decoder'
+        assert isinstance(
+            attn_layers, AttentionLayers), 'attention layers must be one of Encoder or Decoder'
 
         dim = attn_layers.dim
         emb_dim = default(emb_dim, dim)
@@ -571,22 +605,26 @@ class TransformerWrapper(nn.Module):
 
         self.token_emb = nn.Embedding(num_tokens, emb_dim)
         self.pos_emb = AbsolutePositionalEmbedding(emb_dim, max_seq_len) if (
-                    use_pos_emb and not attn_layers.has_pos_emb) else always(0)
+            use_pos_emb and not attn_layers.has_pos_emb) else always(0)
         self.emb_dropout = nn.Dropout(emb_dropout)
 
-        self.project_emb = nn.Linear(emb_dim, dim) if emb_dim != dim else nn.Identity()
+        self.project_emb = nn.Linear(
+            emb_dim, dim) if emb_dim != dim else nn.Identity()
         self.attn_layers = attn_layers
         self.norm = nn.LayerNorm(dim)
 
         self.init_()
 
-        self.to_logits = nn.Linear(dim, num_tokens) if not tie_embedding else lambda t: t @ self.token_emb.weight.t()
+        self.to_logits = nn.Linear(
+            dim,
+            num_tokens) if not tie_embedding else lambda t: t @ self.token_emb.weight.t()
 
         # memory tokens (like [cls]) from Memory Transformers paper
         num_memory_tokens = default(num_memory_tokens, 0)
         self.num_memory_tokens = num_memory_tokens
         if num_memory_tokens > 0:
-            self.memory_tokens = nn.Parameter(torch.randn(num_memory_tokens, dim))
+            self.memory_tokens = nn.Parameter(
+                torch.randn(num_memory_tokens, dim))
 
             # let funnel encoder know number of memory tokens, if specified
             if hasattr(attn_layers, 'num_memory_tokens'):
@@ -620,7 +658,8 @@ class TransformerWrapper(nn.Module):
             if exists(mask):
                 mask = F.pad(mask, (num_mem, 0), value=True)
 
-        x, intermediates = self.attn_layers(x, mask=mask, mems=mems, return_hiddens=True, **kwargs)
+        x, intermediates = self.attn_layers(
+            x, mask=mask, mems=mems, return_hiddens=True, **kwargs)
         x = self.norm(x)
 
         mem, x = x[:, :num_mem], x[:, num_mem:]
@@ -629,13 +668,15 @@ class TransformerWrapper(nn.Module):
 
         if return_mems:
             hiddens = intermediates.hiddens
-            new_mems = list(map(lambda pair: torch.cat(pair, dim=-2), zip(mems, hiddens))) if exists(mems) else hiddens
-            new_mems = list(map(lambda t: t[..., -self.max_mem_len:, :].detach(), new_mems))
+            new_mems = list(map(lambda pair: torch.cat(
+                pair, dim=-2), zip(mems, hiddens))) if exists(mems) else hiddens
+            new_mems = list(
+                map(lambda t: t[..., -self.max_mem_len:, :].detach(), new_mems))
             return out, new_mems
 
         if return_attn:
-            attn_maps = list(map(lambda t: t.post_softmax_attn, intermediates.attn_intermediates))
+            attn_maps = list(map(lambda t: t.post_softmax_attn,
+                             intermediates.attn_intermediates))
             return out, attn_maps
 
         return out
-
