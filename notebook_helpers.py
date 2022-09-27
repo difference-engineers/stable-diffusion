@@ -5,11 +5,10 @@ import os
 # todo ?
 from google.colab import files
 from IPython.display import Image as ipyimg
+from IPython.display import display
 import ipywidgets as widgets
-from PIL import Image
-from numpy import asarray
 from einops import rearrange, repeat
-import torch, torchvision
+import torchvision
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
 import time
@@ -29,8 +28,8 @@ def download_models(mode):
         download_url(url_conf, path_conf)
         download_url(url_ckpt, path_ckpt)
 
-        path_conf = path_conf + '/?dl=1' # fix it
-        path_ckpt = path_ckpt + '/?dl=1' # fix it
+        path_conf = path_conf + '/?dl=1'  # fix it
+        path_ckpt = path_ckpt + '/?dl=1'  # fix it
         return path_conf, path_ckpt
 
     else:
@@ -62,7 +61,8 @@ def get_custom_cond(mode):
     if mode == "superresolution":
         uploaded_img = files.upload()
         filename = next(iter(uploaded_img))
-        name, filetype = filename.split(".") # todo assumes just one dot in name !
+        # todo assumes just one dot in name !
+        name, filetype = filename.split(".")
         os.rename(f"{filename}", f"{dest}/{mode}/custom_{name}.{filetype}")
 
     elif mode == "text_conditional":
@@ -110,9 +110,10 @@ def get_cond(mode, selected_path):
         up_f = 4
         visualize_cond_img(selected_path)
 
-        c = Image.open(selected_path)
+        c = ipyimg.open(selected_path)
         c = torch.unsqueeze(torchvision.transforms.ToTensor()(c), 0)
-        c_up = torchvision.transforms.functional.resize(c, size=[up_f * c.shape[2], up_f * c.shape[3]], antialias=True)
+        c_up = torchvision.transforms.functional.resize(
+            c, size=[up_f * c.shape[2], up_f * c.shape[3]], antialias=True)
         c_up = rearrange(c_up, '1 c h w -> 1 h w c')
         c = rearrange(c, '1 c h w -> 1 h w c')
         c = 2. * c - 1.
@@ -128,7 +129,14 @@ def visualize_cond_img(path):
     display(ipyimg(filename=path))
 
 
-def run(model, selected_path, task, custom_steps, resize_enabled=False, classifier_ckpt=None, global_step=None):
+def run(
+        model,
+        selected_path,
+        task,
+        custom_steps,
+        resize_enabled=False,
+        classifier_ckpt=None,
+        global_step=None):
 
     example = get_cond(task, selected_path)
 
@@ -168,28 +176,58 @@ def run(model, selected_path, task, custom_steps, resize_enabled=False, classifi
     x_T = None
     for n in range(n_runs):
         if custom_shape is not None:
-            x_T = torch.randn(1, custom_shape[1], custom_shape[2], custom_shape[3]).to(model.device)
+            x_T = torch.randn(
+                1,
+                custom_shape[1],
+                custom_shape[2],
+                custom_shape[3]).to(
+                model.device)
             x_T = repeat(x_T, '1 c h w -> b c h w', b=custom_shape[0])
 
-        logs = make_convolutional_sample(example, model,
-                                         mode=mode, custom_steps=custom_steps,
-                                         eta=eta, swap_mode=False , masked=masked,
-                                         invert_mask=invert_mask, quantize_x0=False,
-                                         custom_schedule=None, decode_interval=10,
-                                         resize_enabled=resize_enabled, custom_shape=custom_shape,
-                                         temperature=temperature, noise_dropout=0.,
-                                         corrector=guider, corrector_kwargs=ckwargs, x_T=x_T, save_intermediate_vid=save_intermediate_vid,
-                                         make_progrow=make_progrow,ddim_use_x0_pred=ddim_use_x0_pred
-                                         )
+        logs = make_convolutional_sample(
+            example,
+            model,
+            mode=mode,
+            custom_steps=custom_steps,
+            eta=eta,
+            swap_mode=False,
+            masked=masked,
+            invert_mask=invert_mask,
+            quantize_x0=False,
+            custom_schedule=None,
+            decode_interval=10,
+            resize_enabled=resize_enabled,
+            custom_shape=custom_shape,
+            temperature=temperature,
+            noise_dropout=0.,
+            corrector=guider,
+            corrector_kwargs=ckwargs,
+            x_T=x_T,
+            save_intermediate_vid=save_intermediate_vid,
+            make_progrow=make_progrow,
+            ddim_use_x0_pred=ddim_use_x0_pred)
     return logs
 
 
 @torch.no_grad()
-def convsample_ddim(model, cond, steps, shape, eta=1.0, callback=None, normals_sequence=None,
-                    mask=None, x0=None, quantize_x0=False, img_callback=None,
-                    temperature=1., noise_dropout=0., score_corrector=None,
-                    corrector_kwargs=None, x_T=None, log_every_t=None
-                    ):
+def convsample_ddim(
+        model,
+        cond,
+        steps,
+        shape,
+        eta=1.0,
+        callback=None,
+        normals_sequence=None,
+        mask=None,
+        x0=None,
+        quantize_x0=False,
+        img_callback=None,
+        temperature=1.,
+        noise_dropout=0.,
+        score_corrector=None,
+        corrector_kwargs=None,
+        x_T=None,
+        log_every_t=None):
 
     ddim = DDIMSampler(model)
     bs = shape[0]  # dont know where this comes from but wayne
@@ -205,10 +243,28 @@ def convsample_ddim(model, cond, steps, shape, eta=1.0, callback=None, normals_s
 
 
 @torch.no_grad()
-def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, eta=1.0, swap_mode=False, masked=False,
-                              invert_mask=True, quantize_x0=False, custom_schedule=None, decode_interval=1000,
-                              resize_enabled=False, custom_shape=None, temperature=1., noise_dropout=0., corrector=None,
-                              corrector_kwargs=None, x_T=None, save_intermediate_vid=False, make_progrow=True,ddim_use_x0_pred=False):
+def make_convolutional_sample(
+        batch,
+        model,
+        mode="vanilla",
+        custom_steps=None,
+        eta=1.0,
+        swap_mode=False,
+        masked=False,
+        invert_mask=True,
+        quantize_x0=False,
+        custom_schedule=None,
+        decode_interval=1000,
+        resize_enabled=False,
+        custom_shape=None,
+        temperature=1.,
+        noise_dropout=0.,
+        corrector=None,
+        corrector_kwargs=None,
+        x_T=None,
+        save_intermediate_vid=False,
+        make_progrow=True,
+        ddim_use_x0_pred=False):
     log = dict()
 
     z, c, x, xrec, xc = model.get_input(batch, model.first_stage_key,
@@ -221,7 +277,8 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
 
     if custom_shape is not None:
         z = torch.randn(custom_shape)
-        print(f"Generating {custom_shape[0]} samples of shape {custom_shape[1:]}")
+        print(
+            f"Generating {custom_shape[0]} samples of shape {custom_shape[1:]}")
 
     z0 = None
 
@@ -234,10 +291,12 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
             log[model.cond_stage_key] = model.to_rgb(xc)
 
     else:
-        log["original_conditioning"] = xc if xc is not None else torch.zeros_like(x)
+        log["original_conditioning"] = xc if xc is not None else torch.zeros_like(
+            x)
         if model.cond_stage_model:
-            log[model.cond_stage_key] = xc if xc is not None else torch.zeros_like(x)
-            if model.cond_stage_key =='class_label':
+            log[model.cond_stage_key] = xc if xc is not None else torch.zeros_like(
+                x)
+            if model.cond_stage_key == 'class_label':
                 log[model.cond_stage_key] = xc[model.cond_stage_key]
 
     with model.ema_scope("Plotting"):
@@ -258,10 +317,11 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
     x_sample = model.decode_first_stage(sample)
 
     try:
-        x_sample_noquant = model.decode_first_stage(sample, force_not_quantize=True)
+        x_sample_noquant = model.decode_first_stage(
+            sample, force_not_quantize=True)
         log["sample_noquant"] = x_sample_noquant
         log["sample_diff"] = torch.abs(x_sample_noquant - x_sample)
-    except:
+    except BaseException:
         pass
 
     log["sample"] = x_sample

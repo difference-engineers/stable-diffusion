@@ -3,8 +3,6 @@ import importlib
 import torch
 import numpy as np
 from collections import abc
-from einops import rearrange
-from functools import partial
 
 import multiprocessing as mp
 from threading import Thread
@@ -24,7 +22,8 @@ def log_txt_as_img(wh, xc, size=10):
         draw = ImageDraw.Draw(txt)
         font = ImageFont.truetype('data/DejaVuSans.ttf', size=size)
         nc = int(40 * (wh[0] / 256))
-        lines = "\n".join(xc[bi][start:start + nc] for start in range(0, len(xc[bi]), nc))
+        lines = "\n".join(xc[bi][start:start + nc]
+                          for start in range(0, len(xc[bi]), nc))
 
         try:
             draw.text((0, 0), lines, fill="black", font=font)
@@ -76,7 +75,7 @@ def count_params(model, verbose=False):
 
 
 def instantiate_from_config(config):
-    if not "target" in config:
+    if "target" not in config:
         if config == '__is_first_stage__':
             return None
         elif config == "__is_unconditional__":
@@ -106,8 +105,12 @@ def _do_parallel_data_prefetch(func, Q, data, idx, idx_to_fn=False):
 
 
 def parallel_data_prefetch(
-        func: callable, data, n_proc, target_data_type="ndarray", cpu_intensive=True, use_worker_id=False
-):
+        func: callable,
+        data,
+        n_proc,
+        target_data_type="ndarray",
+        cpu_intensive=True,
+        use_worker_id=False):
     # if target_data_type not in ["ndarray", "list"]:
     #     raise ValueError(
     #         "Data, which is passed to parallel_data_prefetch has to be either of type list or ndarray."
